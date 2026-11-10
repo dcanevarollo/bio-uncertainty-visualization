@@ -1,8 +1,9 @@
+from matplotlib.figure import Figure
 from pandas import DataFrame
 import plotly.express as px
 
 
-def plot_entropy(df_probabilities: DataFrame):
+def plot_entropy(df_probabilities: DataFrame) -> Figure:
     fig = px.line(
         df_probabilities.reset_index(),
         x=df_probabilities.index,
@@ -16,4 +17,5 @@ def plot_entropy(df_probabilities: DataFrame):
 
     fig.update_traces(line_color="#2b5c8f", hovertemplate="<b>Posição:</b> %{x}<br /><b>Incerteza:</b> %{y:.2f}")
     fig.update_layout(yaxis_range=[0, 1], template="plotly_white", height=400)
-    fig.show()
+
+    return fig

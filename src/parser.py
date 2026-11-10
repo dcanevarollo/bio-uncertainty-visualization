@@ -1,5 +1,6 @@
 from collections import Counter
 from pathlib import Path
+from typing import TextIO, Union
 
 from Bio import AlignIO
 from Bio.SeqRecord import SeqRecord
@@ -7,7 +8,7 @@ import pandas as pd
 from pandas import DataFrame
 
 
-def parse_alignment(alignment_file: Path) -> tuple[DataFrame]:
+def parse_alignment(alignment_file: Union[Path, TextIO], debug=False) -> tuple[DataFrame]:
     alignment = AlignIO.read(alignment_file, "stockholm")
 
     seq_num = len(alignment)
@@ -15,12 +16,13 @@ def parse_alignment(alignment_file: Path) -> tuple[DataFrame]:
     print(f"Number of sequences: {seq_num}")
     print(f"Alignment length: {pos_num}\n")
 
-    print("Alignment:")
-    record: SeqRecord
-    for record in alignment:
-        print(record.id) # Sequence identification (species)
-        print(record.seq) # Sequence (aminoacid string + gaps '-'
-    print()
+    if debug:
+        print("Alignment:")
+        record: SeqRecord
+        for record in alignment:
+            print(record.id) # Sequence identification (species)
+            print(record.seq) # Sequence (aminoacid string + gaps '-'
+        print()
 
     pos_data: list[dict] = []
     for i in range(pos_num):
@@ -35,8 +37,9 @@ def parse_alignment(alignment_file: Path) -> tuple[DataFrame]:
     # Calculate p(x) for each aminoacid present in the column (0.0 to 1.0)
     df_probabilities = df_freq.div(seq_num)
 
-    print(df_freq.head())
-    print(df_probabilities.head())
+    if debug:
+        print(df_freq.head())
+        print(df_probabilities.head())
 
     return df_freq, df_probabilities
 
