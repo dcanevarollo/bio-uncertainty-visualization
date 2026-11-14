@@ -1,14 +1,13 @@
 from collections import Counter
 from pathlib import Path
 from typing import TextIO, Union
-
 from Bio import AlignIO
 from Bio.SeqRecord import SeqRecord
 import pandas as pd
 from pandas import DataFrame
 
 
-def parse_alignment(alignment_file: Union[Path, TextIO], debug=False) -> tuple[DataFrame]:
+def parse_alignment(alignment_file: Union[Path, TextIO], debug: bool = False) -> tuple[DataFrame, DataFrame]:
     alignment = AlignIO.read(alignment_file, "stockholm")
 
     seq_num = len(alignment)
@@ -31,7 +30,7 @@ def parse_alignment(alignment_file: Union[Path, TextIO], debug=False) -> tuple[D
         # Count absolute occurrences of each aminoacid/gap
         pos_data.append(Counter(column))
 
-    # lines = sequence positions (0 to n-1); columns = aminoacids / gaps
+    # lines = sequence positions (0 to n-1); columns = amino acids / gaps
     df_freq: DataFrame = pd.DataFrame(pos_data).fillna(0)
 
     # Calculate p(x) for each aminoacid present in the column (0.0 to 1.0)

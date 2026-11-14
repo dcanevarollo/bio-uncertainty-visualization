@@ -1,8 +1,9 @@
 import numpy as np
-from matplotlib.figure import Figure
-from matplotlib.pyplot import colormaps
-from pandas import DataFrame
 import plotly.express as px
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from pandas import DataFrame
+from plotly.graph_objects import Figure
 
 
 def plot_entropy(df_probabilities: DataFrame) -> Figure:
@@ -27,49 +28,55 @@ def plot_uncertainty_heatmap(df_probabilities: DataFrame, df_freq: DataFrame) ->
     columns_aa = [c for c in df_probabilities.columns if c not in ["entropy_bits", "uncertainty_norm"]]
     df_aa = df_probabilities[columns_aa]
 
-    aminoacids = df_aa.columns.tolist()
-    positions = df_freq.index.tolist()
+    amino_acids: list[str] = df_aa.columns.tolist()
+    positions: list[int] = df_freq.index.tolist()
 
-    # Values array for the heatmap
-    z_values = df_aa.T.values
+    # Values array for the heatmap (amino acids x positions)
+    z_values = df_aa.T.values.astype(float)
     n_aa, n_pos = z_values.shape
-    rgba_matrix = np.zeros((n_aa, n_pos, 4), dtype=np.uint8)
 
-    uncertainty_pos = df_probabilities["uncertainty_norm"].values
-    cmap = colormaps["viridis"]
+    # Hue channel: frequency -> viridis (RGBA floats in [0, 1])
+    rgba = plt.get_cmap("viridis")(z_values)
 
-    for j in range(n_pos):
-        uncertainty = uncertainty_pos[j]
-        alpha = 1.0 - (uncertainty * 0.75)
+    # Transparency channel: uncertain positions fade (broadcast over amino-acid rows)
+    uncertainty_pos = df_probabilities["uncertainty_norm"].to_numpy(dtype=float)
+    rgba[..., 3] = 1.0 - uncertainty_pos[np.newaxis, :] * 0.75
 
-        for i in range(n_aa):
-            freq = z_values[i, j]
-            r, g, b, _ = cmap(freq)
+    # go.Image expects 0-255 values for every channel, including alpha
+    z_img = (rgba * 255).round().astype(np.uint8)
 
-            rgba_matrix[i, j, 0] = int(r * 255)
-            rgba_matrix[i, j, 1] = int(g * 255)
-            rgba_matrix[i, j, 2] = int(b * 255)
-            rgba_matrix[i, j, 3] = int(alpha * 255)
+    hover_text = [
+        [
+            f"<b>Posição:</b> {positions[j]}<br /><b>Aminoácido:</b> {amino_acids[i]}"
+            f"<br /><b>Frequência:</b> {z_values[i, j]:.2%}"
+            f"<br /><b>Incerteza:</b> {uncertainty_pos[j]:.2f}"
+            for j in range(n_pos)
+        ]
+        for i in range(n_aa)
+    ]
 
-    fig = px.imshow(
-        rgba_matrix,
-        x=positions,
-        labels=dict(x="Posição na Sequência", y="Aminoácido / Gap", color="Frequência"),
-        title="<b>Mapa de Calor 2D — Codificação por Canais Ortogonais (Cor + Transparência)</b>",
-        aspect="auto"
-    )
-
-    fig.update_yaxes(
-        tickmode="array",
-        tickvals=list(range(len(aminoacids))),
-        ticktext=aminoacids,
-        showgrid=False
+    # go.Image places pixels at x0 + j*dx / y0 + i*dy; positions are contiguous
+    fig = go.Figure(
+        data=go.Image(
+            z=z_img,
+            colormodel="rgba",
+            x0=positions[0],
+            dx=1,
+            y0=0,
+            dy=1,
+            hovertext=hover_text,
+            hovertemplate="%{hovertext}<extra></extra>"
+        )
     )
 
     fig.update_layout(
+        title="<b>Mapa de Calor 2D — Codificação por Canais Ortogonais (Cor + Transparência)</b>",
+        xaxis_title="Posição na Sequência",
+        yaxis_title="Aminoácido / Gap",
+        yaxis=dict(tickmode="array", tickvals=list(range(n_aa)), ticktext=amino_acids, scaleanchor=False),
+        xaxis=dict(constrain="domain"),
         template="plotly_white",
-        height=1000,
-        xaxis=dict(showgrid=False),
-    )
+        height=550,
+        margin=dict(l=85, r=30, t=60, b=60))
 
     return fig
