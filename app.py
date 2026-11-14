@@ -8,8 +8,19 @@ st.set_page_config(page_title="Análise Visual de Incerteza", layout="wide")
 st.title("🧬 Análise Visual de Incerteza e Variabilidade em Proteínas")
 st.markdown("Ferramenta de exploração de alinhamentos proteicos baseada na **Entropia de Shannon**.")
 
-st.sidebar.header("Configurações")
+st.sidebar.header("⚙️ Configurações")
 alignment_file = st.sidebar.file_uploader("Carregar arquivo FASTA/Seed", type=["fasta", "seed", "txt"])
+st.sidebar.divider()
+st.sidebar.header("🎨 Codificação Visual")
+visualization_mode = st.sidebar.radio(
+    "Metáfora de Incerteza:",
+    options=[
+        "Com Transparência (Canais Ortogonais)",
+        "Sem Transparência (Opacidade Fixa)"
+    ],
+    help="Permite comparar o efeito da atenuação visual por transparência nas posições de alta entropia."
+)
+use_fade = visualization_mode == "Com Transparência (Canais Ortogonais)"
 
 if alignment_file is not None:
     # The uploader returns a binary file-like object (UploadedFile, a BytesIO subclass);
@@ -28,7 +39,7 @@ if alignment_file is not None:
         "💡 **Codificação Visual:** O Matiz (Cor) representa a frequência do aminoácido."
         " A Opacidade (Alpha) atenua posições incertas para reduzir a poluição visual."
     )
-    fig_heatmap = visualization.plot_uncertainty_heatmap(df_probabilities, df_freq)
+    fig_heatmap = visualization.plot_uncertainty_heatmap(df_probabilities, df_freq, use_fade)
     st.plotly_chart(fig_heatmap, use_container_width=True)
 else:
     st.info("Faça o upload do arquivo FASTA/Seed contendo os dados de alinhamento da proteína.", icon="ℹ️")

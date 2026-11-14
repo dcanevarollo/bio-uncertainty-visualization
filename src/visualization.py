@@ -24,7 +24,11 @@ def plot_entropy(df_probabilities: DataFrame) -> Figure:
     return fig
 
 
-def plot_uncertainty_heatmap(df_probabilities: DataFrame, df_freq: DataFrame) -> Figure:
+def plot_uncertainty_heatmap(
+        df_probabilities: DataFrame,
+        df_freq: DataFrame,
+        use_fade = True,
+) -> Figure:
     columns_aa = [c for c in df_probabilities.columns if c not in ["entropy_bits", "uncertainty_norm"]]
     df_aa = df_probabilities[columns_aa]
 
@@ -40,9 +44,13 @@ def plot_uncertainty_heatmap(df_probabilities: DataFrame, df_freq: DataFrame) ->
 
     # Transparency channel: uncertain positions fade (broadcast over amino-acid rows)
     uncertainty_pos = df_probabilities["uncertainty_norm"].to_numpy(dtype=float)
-    rgba[..., 3] = 1.0 - uncertainty_pos[np.newaxis, :] * 0.75
 
-    # go.Image expects 0-255 values for every channel, including alpha
+    if use_fade:
+        rgba[..., 3] = 1.0 - uncertainty_pos[np.newaxis, :] * 0.75
+    else:
+        rgba[..., 3] = 1.0
+
+    # "rgba256" expects 0-255 for every channel, including alpha ("rgba" expects alpha in [0, 1])
     z_img = (rgba * 255).round().astype(np.uint8)
 
     hover_text = [
@@ -59,7 +67,7 @@ def plot_uncertainty_heatmap(df_probabilities: DataFrame, df_freq: DataFrame) ->
     fig = go.Figure(
         data=go.Image(
             z=z_img,
-            colormodel="rgba",
+            colormodel="rgba256",
             x0=positions[0],
             dx=1,
             y0=0,
@@ -69,11 +77,21 @@ def plot_uncertainty_heatmap(df_probabilities: DataFrame, df_freq: DataFrame) ->
         )
     )
 
+    title_mode = (
+        "Canais Ortogonais (Cor + Transparência)" if use_fade
+        else "Sem Transparência (Opacidade 100%)"
+    )
+
     fig.update_layout(
-        title="<b>Mapa de Calor 2D — Codificação por Canais Ortogonais (Cor + Transparência)</b>",
+        title=f"<b>Mapa de Calor 2D — {title_mode}</b>",
         xaxis_title="Posição na Sequência",
         yaxis_title="Aminoácido / Gap",
-        yaxis=dict(tickmode="array", tickvals=list(range(n_aa)), ticktext=amino_acids, scaleanchor=False),
+        yaxis=dict(
+            tickmode="array",
+            tickvals=list(range(n_aa)),
+            ticktext=amino_acids,
+            scaleanchor=False
+        ),
         xaxis=dict(constrain="domain"),
         template="plotly_white",
         height=550,
