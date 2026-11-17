@@ -33,7 +33,7 @@ def plot_uncertainty_heatmap(
     df_aa = df_probabilities[columns_aa]
 
     amino_acids: list[str] = df_aa.columns.tolist()
-    positions: list[int] = df_freq.index.tolist()
+    positions: list[int] = df_aa.index.tolist()
 
     # Values array for the heatmap (amino acids x positions)
     z_values = df_aa.T.values.astype(float)
@@ -63,12 +63,18 @@ def plot_uncertainty_heatmap(
         for i in range(n_aa)
     ]
 
-    # go.Image places pixels at x0 + j*dx / y0 + i*dy; positions are contiguous
+    # go.Image places pixels at x0 + j*dx / y0 + i*dy, so columns are contiguous. After the uncertainty
+    # filter, positions are NOT contiguous: the x axis uses the column index and ticks are relabeled
+    # with the real sequence positions.
+    tick_step = max(1, n_pos // 10)
+    x_tickvals = list(range(0, n_pos, tick_step))
+    x_ticktext = [str(positions[j]) for j in x_tickvals]
+
     fig = go.Figure(
         data=go.Image(
             z=z_img,
             colormodel="rgba256",
-            x0=positions[0],
+            x0=0,
             dx=1,
             y0=0,
             dy=1,
@@ -92,9 +98,9 @@ def plot_uncertainty_heatmap(
             ticktext=amino_acids,
             scaleanchor=False
         ),
-        xaxis=dict(constrain="domain"),
+        xaxis=dict(constrain="domain", tickmode="array", tickvals=x_tickvals, ticktext=x_ticktext),
         template="plotly_white",
-        height=550,
-        margin=dict(l=85, r=30, t=60, b=60))
+        height=550
+    )
 
     return fig
