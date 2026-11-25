@@ -45,27 +45,43 @@ if alignment_file is not None:
     df_probabilities["uncertainty_norm"] = entropy.normalize_entropy(df_probabilities["entropy_bits"])
 
     # Apply threshold filters on DataFrame
-    mask = df_probabilities["uncertainty_norm"] >= uncertainty_threshold
-    df_probabilities_filtered = df_probabilities[mask]
-    df_freq_filtered = df_freq[mask]
+    threshold_mask = df_probabilities["uncertainty_norm"] >= uncertainty_threshold
+
+    st.sidebar.header("🗺️ Navegação na Sequência")
 
     total_pos = len(df_probabilities)
+    pos_min = int(df_probabilities.index.min())
+    pos_max = int(df_probabilities.index.max())
+
+    pos_window = st.sidebar.slider(
+        "Intervalo de Posições (Zoom):",
+        min_value=pos_min,
+        max_value=pos_max,
+        value=(pos_min, pos_max),
+        step=1,
+        help="Selecione uma região específica da proteína para dar zoom nas visualizações."
+    )
+    start_pos, end_pos = pos_window
+
+    window_mask = (df_probabilities.index >= start_pos) & (df_probabilities.index <= end_pos)
+    final_mask = window_mask & threshold_mask
+
+    df_probabilities_filtered = df_probabilities[final_mask]
+    df_freq_filtered = df_freq[final_mask]
+
+    st.sidebar.caption(
+        f"🔍 **Janela selecionada:** Posições {start_pos} a {end_pos} "
+        f"({end_pos - start_pos + 1} posições | {len(df_probabilities_filtered)} exibidas no heatmap)"
+    )
+
     filtered_pos = len(df_probabilities_filtered)
     st.sidebar.info(
         f"📌 **Posições exibidas:** {filtered_pos} de {total_pos}"
         f" ({(filtered_pos/total_pos):.1%} do total)"
     )
 
-    st.subheader("1. Perfil Geral de Incerteza (Entropia Normalizada)")
-    fig_1d = visualization.plot_entropy(df_probabilities)
-    if uncertainty_threshold > 0.0:
-        fig_1d.add_hline(
-            y=uncertainty_threshold,
-            line_dash="dash",
-            line_color="red",
-            annotation_text=f"Limiar: {uncertainty_threshold:.2f}",
-            annotation_position="top right",
-        )
+    st.subheader("1. Perfil Geral de Incerteza & Panorama de Navegação")
+    fig_1d = visualization.plot_entropy(df_probabilities, start_pos, end_pos, uncertainty_threshold)
     st.plotly_chart(fig_1d, use_container_width=True)
 
     st.subheader("2. Mapa de Calor 2D (Posição vs. Aminoácido)")

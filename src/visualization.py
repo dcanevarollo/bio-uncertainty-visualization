@@ -6,7 +6,7 @@ from pandas import DataFrame
 from plotly.graph_objects import Figure
 
 
-def plot_entropy(df_probabilities: DataFrame) -> Figure:
+def plot_entropy(df_probabilities: DataFrame, start_pos: int, end_pos: int, uncertainty_threshold: float) -> Figure:
     fig = px.line(
         df_probabilities.reset_index(),
         x=df_probabilities.index,
@@ -18,8 +18,31 @@ def plot_entropy(df_probabilities: DataFrame) -> Figure:
         title="<b>Perfil Interativo de Incerteza (Entropia de Shannon)</b>"
     )
 
-    fig.update_traces(line_color="#2b5c8f", hovertemplate="<b>Posição:</b> %{x}<br /><b>Incerteza:</b> %{y:.2f}")
-    fig.update_layout(yaxis_range=[0, 1], template="plotly_white", height=500)
+    fig.add_vrect(
+        x0=start_pos,
+        x1=end_pos,
+        fillcolor="#2b5c8f",
+        opacity=0.15,
+        layer="below",
+        line_width=1,
+        annotation_text="Região em Foco",
+        annotation_position="top left"
+    )
+
+    if uncertainty_threshold > 0.0:
+        fig.add_hline(
+            y=uncertainty_threshold,
+            line_dash="dash",
+            line_color="red",
+            annotation_text=f"Limiar: {uncertainty_threshold:.2f}",
+            annotation_position="top right",
+        )
+
+    fig.update_layout(
+        template="plotly_white",
+        height=330,
+        xaxis=dict(rangeslider=dict(visible=True), type="linear")
+    )
 
     return fig
 
