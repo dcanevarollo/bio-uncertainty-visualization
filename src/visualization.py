@@ -56,7 +56,7 @@ def plot_uncertainty_heatmap(
     df_aa = df_probabilities[columns_aa]
 
     amino_acids: list[str] = df_aa.columns.tolist()
-    positions: list[int] = df_aa.index.tolist()
+    positions: list[int] = df_freq.index.tolist()
 
     # Values array for the heatmap (amino acids x positions)
     z_values = df_aa.T.values.astype(float)
@@ -68,6 +68,12 @@ def plot_uncertainty_heatmap(
     # Transparency channel: uncertain positions fade (broadcast over amino-acid rows)
     uncertainty_pos = df_probabilities["uncertainty_norm"].to_numpy(dtype=float)
 
+    entropy_bits = (
+        df_probabilities["entropy_bits"].to_numpy(dtype=float)
+        if "entropy_bits" in df_probabilities.columns
+        else uncertainty_pos
+    )
+
     if use_fade:
         rgba[..., 3] = 1.0 - uncertainty_pos[np.newaxis, :] * 0.75
     else:
@@ -78,9 +84,11 @@ def plot_uncertainty_heatmap(
 
     hover_text = [
         [
-            f"<b>Posição:</b> {positions[j]}<br /><b>Aminoácido:</b> {amino_acids[i]}"
-            f"<br /><b>Frequência:</b> {z_values[i, j]:.2%}"
-            f"<br /><b>Incerteza:</b> {uncertainty_pos[j]:.2f}"
+            f"<b>📍 Posição:</b> {positions[j]}<br />"
+            f"<b>🧬 Aminoácido / Gap:</b> {amino_acids[i]}<br />"
+            f"<b>📊 Frequência (Probabilidade):</b> {z_values[i, j]:.2%}<br />"
+            f"<b>⚙️ Entropia de Shannon:</b> {entropy_bits[j]:.3f} bits<br />"
+            f"<b>📉 Incerteza Normalizada:</b> {uncertainty_pos[j]:.2f}"
             for j in range(n_pos)
         ]
         for i in range(n_aa)
@@ -123,7 +131,14 @@ def plot_uncertainty_heatmap(
         ),
         xaxis=dict(constrain="domain", tickmode="array", tickvals=x_tickvals, ticktext=x_ticktext),
         template="plotly_white",
-        height=550
+        height=550,
+        hoverlabel=dict(
+            bgcolor="#ffffff",
+            font_size=13,
+            font_family="sans-serif",
+            font_color="#575757",
+            bordercolor="#2b5c8f"
+        )
     )
 
     return fig
